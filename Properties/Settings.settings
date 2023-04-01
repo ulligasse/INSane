@@ -1,0 +1,27 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="INSane.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="source" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Adf-Duplex</Value>
+    </Setting>
+    <Setting Name="mode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Gray</Value>
+    </Setting>
+    <Setting Name="resolution" Type="System.String" Scope="User">
+      <Value Profile="(Default)">240</Value>
+    </Setting>
+    <Setting Name="pageAuto" Type="System.String" Scope="User">
+      <Value Profile="(Default)">true</Value>
+    </Setting>
+    <Setting Name="blankPageSkip" Type="System.String" Scope="User">
+      <Value Profile="(Default)">true</Value>
+    </Setting>
+    <Setting Name="blankPageSkipSensitivity" Type="System.String" Scope="User">
+      <Value Profile="(Default)">5</Value>
+    </Setting>
+    <Setting Name="selectScanner" Type="System.String" Scope="User">
+      <Value Profile="(Default)">pfufs</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
