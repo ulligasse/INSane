@@ -321,6 +321,16 @@ namespace INSane
             return _FIX32;
         }
 
+        private static uint GetChecksum(string s)
+        {
+            uint checksum = 0;
+            foreach (char c in s)
+            {
+                checksum += Convert.ToByte(c);
+            }
+            return checksum;
+        }
+
         private void Send_TWAIN_Message(TW_IDENTITY _Origin, TW_IDENTITY _Dest, DG _DG, DAT _DAT, MSG _MSG, object _Data)
         {
             IntPtr _pOrigin = GlobalAlloc((int)GlobalAllocFlags.GHND, Marshal.SizeOf(_Origin));
@@ -332,7 +342,7 @@ namespace INSane
             Message_From_DS?.Invoke(_pOrigin, _pDest, (uint)_DG, (uint)_DAT, (ushort)_MSG, IntPtr.Zero);
         }
 
-        public short Message_To_DS(IntPtr _pOrigin, DG _DG, DAT _DAT, MSG _MSG, IntPtr _pData)
+        public short Message_To_DS(IntPtr _pOrigin, DG _DG, DAT _DAT, MSG _MSG, IntPtr _pData, string _dsOrigin)
         {
             switch (_DG)
             {
@@ -342,13 +352,13 @@ namespace INSane
                         case DAT.DAT_CAPABILITY:
                             return (short)DG_CONTROL__DAT_CAPABILITY(_MSG, _pData);
                         case DAT.DAT_IDENTITY:
-                            return (short)DG_CONTROL__DAT_IDENTITY(_pOrigin, _MSG, _pData);
+                            return (short)DG_CONTROL__DAT_IDENTITY(_pOrigin, _MSG, _pData, _dsOrigin);
                         case DAT.DAT_USERINTERFACE:
                             return (short)DG_CONTROL__DAT_USERINTERFACE(_MSG, _pData);
                         case DAT.DAT_PENDINGXFERS:
                             return (short)DG_CONTROL__DAT_PENDINGXFERS(_MSG, _pData);
                         case DAT.DAT_SETUPMEMXFER:
-                            return (short)DG_CONTROL__DAT_SETUPMEMXFER(_MSG, _pData);
+                            return (short)DG_CONTROL__DAT_SETUPMEMXFER(_MSG, _pData, _dsOrigin);
                         case DAT.DAT_EVENT:
                             return (short) TWRC.TWRC_SUCCESS;
                         default:
@@ -522,11 +532,11 @@ namespace INSane
             Send_TWAIN_Message(TWAINIdentity, AppIdentity, DG.DG_CONTROL, DAT.DAT_NULL, MSG.MSG_XFERREADY, null);
         }
 
-        private TWRC DG_CONTROL__DAT_SETUPMEMXFER(MSG _MSG, IntPtr _pData)
+        private TWRC DG_CONTROL__DAT_SETUPMEMXFER(MSG _MSG, IntPtr _pData, string _dsOrigin)
         {
             if (SANE == null)
             {
-                SANE = new classSANE(SANE_Host, 6566);
+                SANE = new classSANE(SANE_Host, 6566, _dsOrigin);
 
                 FormScan.SetSANEConnection(SANE);
                 FormScan.SetHostInformation(SANE.hostname, SANE.networkDevice.name, SANE.DEVICE_DUPLEX);
@@ -593,11 +603,14 @@ namespace INSane
             }
         }
 
-        private TWRC DG_CONTROL__DAT_IDENTITY(IntPtr _pOrigin, MSG _MSG, IntPtr _pData)
+        private TWRC DG_CONTROL__DAT_IDENTITY(IntPtr _pOrigin, MSG _MSG, IntPtr _pData, string _dsOrigin)
         {
             switch(_MSG)
             {
                 case MSG.MSG_GET:
+                    TWAINIdentity.Id = GetChecksum(_dsOrigin);
+                    TWAINIdentity.ProductName = "InSane - " + _dsOrigin;
+
                     Marshal.StructureToPtr(TWAINIdentity, _pData, true);
                     return TWRC.TWRC_SUCCESS;
                 case MSG.MSG_OPENDS:

@@ -148,7 +148,7 @@ namespace INSane
         public bool DEVICE_FEEDERENABLED = false;
         public bool DEVICE_DUPLEX = false;
 
-        public classSANE(string _hostname, int _port)
+        public classSANE(string _hostname, int _port, string _scanner)
         {
             SANE_STATUS status = SANE_STATUS.Invalid;
             int retry = 0;
@@ -197,7 +197,7 @@ namespace INSane
                             networkDevice.model = ReadString();
                             networkDevice.type = ReadString();
 
-                            if(networkDevice.name.Contains(Properties.Settings.Default.selectScanner))
+                            if(networkDevice.name.Contains(_scanner))
                                 this.networkDevice = networkDevice;
                         }
                     }
@@ -267,7 +267,7 @@ namespace INSane
                     status = SANE_STATUS.Invalid;
                     retry++;
 
-                    MessageBox.Show(null, "Der Scanner wird aktuell schon verwendet oder er ist nicht angeschlossen ! Host: " + hostname, "Versuch bis zur Selbstzerstörung " + retry + " von 10", MessageBoxButtons.OK);
+                    MessageBox.Show(null, "Der Scanner wird aktuell schon verwendet oder er ist nicht angeschlossen ! Host: " + hostname + ", Scanner: " + _scanner, "Versuch bis zur Selbstzerstörung " + retry + " von 10", MessageBoxButtons.OK);
                 }
             } while (status != SANE_STATUS.Success && retry < 10);            
         }
