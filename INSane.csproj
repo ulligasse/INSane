@@ -92,6 +92,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy "$(TargetDir)*" "C:\Windows\twain_32\INSane" /y</PostBuildEvent>
+    <PostBuildEvent>mkdir "C:\Windows\twain_32\pfufs"
+xcopy "$(TargetDir)*" "C:\Windows\twain_32\pfufs" /y</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -61,6 +61,7 @@ namespace INSane
             public int unit;
             public int SaneCapabilities;
             public uint constraint;
+            public List<string> constraint_values;
         }
 
         internal enum NetworkCommand
@@ -138,13 +139,13 @@ namespace INSane
         private readonly NetworkStream stream;
         public NetworkDevice networkDevice;
         private int networkDeviceHandle;
-        private List<NetworkDeviceOption> networkDeviceOptions;
         private System.ComponentModel.BackgroundWorker ImageDataWorker;
         private ImageDataWorkerState ImageWorkerState;
 
         private int ImageData_Port = 0;
         private SANE_BYTE_ORDER ImageData_ByteOrder;
 
+        public List<NetworkDeviceOption> networkDeviceOptions;
         public bool DEVICE_FEEDERENABLED = false;
         public bool DEVICE_DUPLEX = false;
 
@@ -230,6 +231,7 @@ namespace INSane
                             networkDeviceOption.size = ReadWord();
                             networkDeviceOption.SaneCapabilities = ReadWord();
                             networkDeviceOption.constraint = (uint)ReadWord();
+                            networkDeviceOption.constraint_values = new List<string>();
 
                             int constraintLength = 0;
                             switch (networkDeviceOption.constraint)
@@ -240,13 +242,17 @@ namespace INSane
                                 case (int)SANE_CONSTRAINT_TYPE.SANE_CONSTRAINT_WORD_LIST:
                                     constraintLength = ReadWord();
                                     for (int y = 0; y < constraintLength; y++)
-                                        ReadWord();
+                                    {
+                                        int constraint_value = ReadWord();
+                                        networkDeviceOption.constraint_values.Add(constraint_value.ToString());
+                                    }
                                     break;
                                 case (int)SANE_CONSTRAINT_TYPE.SANE_CONSTRAINT_STRING_LIST:
                                     constraintLength = ReadWord();
                                     for (int y = 0; y < constraintLength; y++)
                                     {
                                         string constriant_string = ReadString();
+                                        networkDeviceOption.constraint_values.Add(constriant_string);
 
                                         if (!DEVICE_FEEDERENABLED) DEVICE_FEEDERENABLED = constriant_string.ToLower().Contains("adf");
                                         if (!DEVICE_DUPLEX) DEVICE_DUPLEX = constriant_string.ToLower().Contains("duplex");
@@ -254,7 +260,10 @@ namespace INSane
                                     break;
                                 case (int)SANE_CONSTRAINT_TYPE.SANE_CONSTRAINT_RANGE:
                                     for (int y = 0; y < 4; y++)
-                                        ReadWord();
+                                    {
+                                        int constraint_value = ReadWord();
+                                        networkDeviceOption.constraint_values.Add(constraint_value.ToString());
+                                    }
                                     break;
                             }
 

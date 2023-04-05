@@ -540,6 +540,7 @@ namespace INSane
 
                 FormScan.SetSANEConnection(SANE);
                 FormScan.SetHostInformation(SANE.hostname, SANE.networkDevice.name, SANE.DEVICE_DUPLEX);
+                FormScan.SetFormControls();
                 FormScan.SetUserDefaults();
             }
 
