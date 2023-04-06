@@ -286,16 +286,19 @@ namespace INSane
             try
             {
                 RegistryKey localKey32 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-                string[] sessions = localKey32.OpenSubKey(CTX_REGISTRY_BASE).GetSubKeyNames();
-
-                foreach (string session in sessions)
+                if (localKey32 != null && localKey32.OpenSubKey(CTX_REGISTRY_BASE) != null)
                 {
-                    if (Regex.IsMatch(session, @"^\d+$"))
+                    string[] sessions = localKey32.OpenSubKey(CTX_REGISTRY_BASE).GetSubKeyNames();
+
+                    foreach (string session in sessions)
                     {
-                        string username = localKey32.OpenSubKey(CTX_REGISTRY_BASE + "\\" + session + "\\Connection").GetValue("UserName", "UserName").ToString();
-                        if (username == Environment.UserName)
+                        if (Regex.IsMatch(session, @"^\d+$"))
                         {
-                            return (string)localKey32.OpenSubKey(CTX_REGISTRY_BASE + "\\" + session + "\\Connection").GetValue("ClientName", "ClientName");
+                            string username = localKey32.OpenSubKey(CTX_REGISTRY_BASE + "\\" + session + "\\Connection").GetValue("UserName", "UserName").ToString();
+                            if (username == Environment.UserName)
+                            {
+                                return (string)localKey32.OpenSubKey(CTX_REGISTRY_BASE + "\\" + session + "\\Connection").GetValue("ClientName", "ClientName");
+                            }
                         }
                     }
                 }
@@ -428,6 +431,8 @@ namespace INSane
                     MessageBox.Show("Der Einzug des Scanners ist leer !");
                 else if(Status == SANE_STATUS.Jammed)
                     MessageBox.Show("Papierstau im Scanner !");
+                else if(Status == SANE_STATUS.DeviceBusy)
+                    MessageBox.Show("Fehler bei Dateiübertragung !");
 
                 SANE.DEVICE_FEEDERENABLED = false;
                 return TWRC.TWRC_CANCEL;
@@ -539,7 +544,7 @@ namespace INSane
                 SANE = new classSANE(SANE_Host, 6566, _dsOrigin);
 
                 FormScan.SetSANEConnection(SANE);
-                FormScan.SetHostInformation(SANE.hostname, SANE.networkDevice.name, SANE.DEVICE_DUPLEX);
+                FormScan.SetHostInformation();
                 FormScan.SetFormControls();
                 FormScan.SetUserDefaults();
             }
@@ -664,8 +669,11 @@ namespace INSane
 
         private void SANE_Close()
         {
-            SANE.Net_Cancle();
-            SANE.Net_Close();
+            if (SANE.networkDevice.name != null) {
+                SANE.Net_Cancle();
+                SANE.Net_Close();
+            }
+
             SANE.Net_Exit();
             SANE = null;
         }

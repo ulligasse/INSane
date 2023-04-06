@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Reflection;
 using System.Windows.Forms;
 using static INSane.classSANE;
 
@@ -24,6 +26,19 @@ namespace INSane
         public bool GOT_MSG_CLOSEDS = false;
         private classSANE SANE;
 
+        private Dictionary<string, string> translation = new Dictionary<string, string>()
+        {
+            { "Flatbed", "Flachbett" },
+            { "Adf-front", "Vorderseite" },
+            { "ADF Front", "Vorderseite" },
+            { "Adf-back", "Rückseite" },
+            { "Adf-duplex", "Beidseitig" },
+            { "ADF Duplex", "Beidseitig" },
+            { "Lineart", "Schwarzweiß" },
+            { "Gray", "Graustufen" },
+            { "Color", "Farbig" }
+        };
+
         private List<ComboBoxItem> sources = new List<ComboBoxItem>(){};
         private List<ComboBoxItem> modes = new List<ComboBoxItem>(){};
 
@@ -32,6 +47,11 @@ namespace INSane
         public formScan()
         {
             InitializeComponent();
+
+            cbPageAuto.Checked = Boolean.Parse(Properties.Settings.Default.pageAuto);
+            cbBlankPageDetection.Checked = Boolean.Parse(Properties.Settings.Default.blankPageSkip);
+            tbBlankPageDetectionSensitivity.Value = Convert.ToInt32(Properties.Settings.Default.blankPageSkipSensitivity);
+            tbBlankPageDetectionSensitivity.Enabled = cbBlankPageDetection.Checked;
         }
 
         public void SetControlsEnables(bool t)
@@ -47,21 +67,35 @@ namespace INSane
             if (cbBlankPageDetection.Enabled && cbBlankPageDetection.Checked == false) tbBlankPageDetectionSensitivity.Enabled = cbBlankPageDetection.Checked;
         }
 
-        public void SetHostInformation(string host, string device, bool duplex)
+        public void SetHostInformation()
         {
-            tbxHost.Text = host;
-            tbxScanner.Text = device;
-            cbxSource.Enabled = duplex;
+            tbxHost.Text = SANE.hostname;
+            tbxScanner.Text = SANE.networkDevice.name;
+            cbxSource.Enabled = SANE.DEVICE_DUPLEX;
         }
 
         internal void SetUserDefaults()
         {
-            SANE.Net_Control_Option("source", Properties.Settings.Default.source);
-            SANE.Net_Control_Option("mode", Properties.Settings.Default.mode);
-            SANE.Net_Control_Option("resolution", Properties.Settings.Default.resolution);
-            SANE.Net_Control_Option("page-auto", Properties.Settings.Default.pageAuto);
-            SANE.Net_Control_Option("blank-page-skip", Properties.Settings.Default.blankPageSkip);
-            SANE.Net_Control_Option("blank-page-skip-sensitivity", Properties.Settings.Default.blankPageSkipSensitivity);
+            if (SANE.networkDeviceOptions != null)
+            {
+                if (SANE.networkDeviceOptions.FindIndex(v => v.name == "source") != -1)
+                    SANE.Net_Control_Option("source", Properties.Settings.Default.source);
+
+                if (SANE.networkDeviceOptions.FindIndex(v => v.name == "mode") != -1)
+                    SANE.Net_Control_Option("mode", Properties.Settings.Default.mode);
+
+                if (SANE.networkDeviceOptions.FindIndex(v => v.name == "resolution") != -1)
+                    SANE.Net_Control_Option("resolution", Properties.Settings.Default.resolution);
+
+                if (SANE.networkDeviceOptions.FindIndex(v => v.name == "page-auto") != -1)
+                    SANE.Net_Control_Option("page-auto", Properties.Settings.Default.pageAuto);
+
+                if (SANE.networkDeviceOptions.FindIndex(v => v.name == "blank-page-skip") != -1)
+                    SANE.Net_Control_Option("blank-page-skip", Properties.Settings.Default.blankPageSkip);
+
+                if (SANE.networkDeviceOptions.FindIndex(v => v.name == "blank-page-skip-sensitivity") != -1)
+                    SANE.Net_Control_Option("blank-page-skip-sensitivity", Properties.Settings.Default.blankPageSkipSensitivity);
+            }
         }
 
         internal void SetSANEConnection(classSANE _SANE)
@@ -70,25 +104,20 @@ namespace INSane
         }
 
         internal void SetFormControlSource(NetworkDeviceOption option)
-        {          
-            foreach(string constraint in option.constraint_values)
+        {        
+            if(cbxSource.Items.Count > 0)
             {
-                if (constraint.Trim().Length > 0)
-                {
-                    string displayName = constraint;
-
-                    if (constraint == "Flatbed") displayName = "Flachbett";
-                    if (constraint == "Adf-front") displayName = "Vorderseite";
-                    if (constraint == "Adf-back") displayName = "Rückseite";
-                    if (constraint == "Adf-duplex") displayName = "Beidseitig";
-
-                    sources.Add(new ComboBoxItem(displayName, constraint));
-                    cbxSource.Items.Add(displayName);
-                }
+                sources.Clear();
+                cbxSource.Items.Clear();
             }
 
-            if(cbxSource.Items.Count > 1)
-                cbxSource.Enabled = true;
+            foreach (string constraint in option.constraint_values)
+            {
+
+                string displayName = translation.ContainsKey(constraint) ? translation[constraint] : constraint;
+                sources.Add(new ComboBoxItem(displayName, constraint));
+                cbxSource.Items.Add(displayName);
+            }
 
             int index = -1;
             index = sources.FindIndex(v => v.value == Properties.Settings.Default.source);
@@ -98,23 +127,17 @@ namespace INSane
 
         internal void SetFormControlMode(NetworkDeviceOption option)
         {
-            foreach (string constraint in option.constraint_values)
-            {
-                if (constraint.Trim().Length > 0)
-                {
-                    string displayName = constraint;
-
-                    if (constraint == "Lineart") displayName = "Schwarzweiß";
-                    if (constraint == "Gray") displayName = "Graustufe";
-                    if (constraint == "Color") displayName = "Farbig";
-
-                    modes.Add(new ComboBoxItem(displayName, constraint));
-                    cbxMode.Items.Add(displayName);
-                }
+            if (cbxMode.Items.Count > 0) {
+                modes.Clear();
+                cbxMode.Items.Clear();
             }
 
-            if (cbxMode.Items.Count > 1)
-                cbxMode.Enabled = true;
+            foreach (string constraint in option.constraint_values)
+            {
+                string displayName = translation.ContainsKey(constraint) ? translation[constraint] : constraint;
+                modes.Add(new ComboBoxItem(displayName, constraint));
+                cbxMode.Items.Add(displayName);
+            }
 
             int index = -1;
             index = modes.FindIndex(v => v.value == Properties.Settings.Default.mode);
@@ -124,6 +147,11 @@ namespace INSane
 
         internal void SetFormControlResolution(NetworkDeviceOption option)
         {
+            if (cbxResolution.Items.Count > 0) {
+                resolutions.Clear();
+                cbxResolution.Items.Clear();
+            }
+
             int max_resolution = 0;
             foreach (string constraint in option.constraint_values)
             {
@@ -144,47 +172,29 @@ namespace INSane
 
             resolutions.ForEach(v => cbxResolution.Items.Add(v.displayName));
 
-            if (cbxResolution.Items.Count > 1)
-                cbxResolution.Enabled = true;
-
             int index = -1;
             index = resolutions.FindIndex(v => v.value == Properties.Settings.Default.resolution);
             if (index >= 0) cbxResolution.SelectedIndex = index;
             else cbxResolution.SelectedIndex = 0;
         }
 
-        internal void SetFormControlPageAuto(NetworkDeviceOption option)
-        {
-            cbPageAuto.Enabled= true;
-            cbPageAuto.Checked = Boolean.Parse(Properties.Settings.Default.pageAuto);
-        }
-
-        internal void SetFormControlBlankPageSkip(NetworkDeviceOption option)
-        {
-            cbBlankPageDetection.Enabled= true;
-            cbBlankPageDetection.Checked = Boolean.Parse(Properties.Settings.Default.blankPageSkip);
-            tbBlankPageDetectionSensitivity.Value = Convert.ToInt32(Properties.Settings.Default.blankPageSkipSensitivity);
-            tbBlankPageDetectionSensitivity.Enabled = cbBlankPageDetection.Checked;
-        }
-
         internal void SetFormControls()
         {
-            int index = -1;
+            if (SANE.networkDeviceOptions != null)
+            {
+                int index = -1;
 
-            index = SANE.networkDeviceOptions.FindIndex(v => v.name == "source");
-            if (index >= 0) SetFormControlSource(SANE.networkDeviceOptions[index]);
+                index = SANE.networkDeviceOptions.FindIndex(v => v.name == "source");
+                if (index >= 0) SetFormControlSource(SANE.networkDeviceOptions[index]);
 
-            index = SANE.networkDeviceOptions.FindIndex(v => v.name == "mode");
-            if (index >= 0) SetFormControlMode(SANE.networkDeviceOptions[index]);
+                index = SANE.networkDeviceOptions.FindIndex(v => v.name == "mode");
+                if (index >= 0) SetFormControlMode(SANE.networkDeviceOptions[index]);
 
-            index = SANE.networkDeviceOptions.FindIndex(v => v.name == "resolution");
-            if (index >= 0) SetFormControlResolution(SANE.networkDeviceOptions[index]);
-
-            index = SANE.networkDeviceOptions.FindIndex(v => v.name == "page-auto");
-            if (index >= 0) SetFormControlPageAuto(SANE.networkDeviceOptions[index]);
-
-            index = SANE.networkDeviceOptions.FindIndex(v => v.name == "blank-page-skip");
-            if (index >= 0) SetFormControlBlankPageSkip(SANE.networkDeviceOptions[index]);
+                index = SANE.networkDeviceOptions.FindIndex(v => v.name == "resolution");
+                if (index >= 0) SetFormControlResolution(SANE.networkDeviceOptions[index]);
+            }
+            else
+                SetControlsEnables(false);
         }
 
         private void cbxSource_SelectedIndexChanged(object sender, EventArgs e)

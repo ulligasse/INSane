@@ -75,7 +75,6 @@ namespace INSane
             // cbxSource
             // 
             this.cbxSource.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbxSource.Enabled = false;
             this.cbxSource.FormattingEnabled = true;
             this.cbxSource.Location = new System.Drawing.Point(12, 64);
             this.cbxSource.Name = "cbxSource";
@@ -95,7 +94,6 @@ namespace INSane
             // cbxMode
             // 
             this.cbxMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbxMode.Enabled = false;
             this.cbxMode.FormattingEnabled = true;
             this.cbxMode.Location = new System.Drawing.Point(12, 108);
             this.cbxMode.Name = "cbxMode";
@@ -115,7 +113,6 @@ namespace INSane
             // cbxResolution
             // 
             this.cbxResolution.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbxResolution.Enabled = false;
             this.cbxResolution.FormattingEnabled = true;
             this.cbxResolution.Location = new System.Drawing.Point(12, 155);
             this.cbxResolution.Name = "cbxResolution";
@@ -126,7 +123,6 @@ namespace INSane
             // cbPageAuto
             // 
             this.cbPageAuto.AutoSize = true;
-            this.cbPageAuto.Enabled = false;
             this.cbPageAuto.Location = new System.Drawing.Point(12, 194);
             this.cbPageAuto.Name = "cbPageAuto";
             this.cbPageAuto.Size = new System.Drawing.Size(233, 17);
@@ -138,7 +134,6 @@ namespace INSane
             // cbBlankPageDetection
             // 
             this.cbBlankPageDetection.AutoSize = true;
-            this.cbBlankPageDetection.Enabled = false;
             this.cbBlankPageDetection.Location = new System.Drawing.Point(12, 230);
             this.cbBlankPageDetection.Name = "cbBlankPageDetection";
             this.cbBlankPageDetection.Size = new System.Drawing.Size(133, 17);

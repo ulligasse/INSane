@@ -153,17 +153,21 @@ namespace INSane
         {
             SANE_STATUS status = SANE_STATUS.Invalid;
             int retry = 0;
+            int max_retry = 0;
 
             do
             {
+                int connection_step = 0;
+
                 try
                 {
+                    // Connect to SANE Host
                     hostname = _hostname;
 
                     socket = new TcpClient(_hostname, _port);
                     stream = socket.GetStream();
 
-                    networkDeviceOptions = new List<NetworkDeviceOption>();
+                    connection_step++;
 
                     // Initialize SANE
                     SendWord((int)NetworkCommand.Initialize);
@@ -177,6 +181,8 @@ namespace INSane
 
                     int version = ReadWord();
                     Console.WriteLine(version);
+
+                    connection_step++;
 
                     // Get Devices and pick one by deviceSelector ( autolocate )
                     SendWord((int)NetworkCommand.GetDevices);
@@ -198,7 +204,7 @@ namespace INSane
                             networkDevice.model = ReadString();
                             networkDevice.type = ReadString();
 
-                            if(networkDevice.name.Contains(_scanner))
+                            if (networkDevice.name.Contains(_scanner))
                                 this.networkDevice = networkDevice;
                         }
                     }
@@ -214,7 +220,11 @@ namespace INSane
                     if (status != SANE_STATUS.Success)
                         throw new Exception();
 
+                    connection_step++;
+
                     // Get Device Options
+                    networkDeviceOptions = new List<NetworkDeviceOption>();
+
                     SendWord((int)NetworkCommand.GetOptionDescriptors);
                     SendWord(networkDeviceHandle);
                     int optionDescritorsLength = ReadWord();
@@ -242,17 +252,16 @@ namespace INSane
                                 case (int)SANE_CONSTRAINT_TYPE.SANE_CONSTRAINT_WORD_LIST:
                                     constraintLength = ReadWord();
                                     for (int y = 0; y < constraintLength; y++)
-                                    {
-                                        int constraint_value = ReadWord();
-                                        networkDeviceOption.constraint_values.Add(constraint_value.ToString());
-                                    }
+                                        networkDeviceOption.constraint_values.Add(ReadWord().ToString());
                                     break;
                                 case (int)SANE_CONSTRAINT_TYPE.SANE_CONSTRAINT_STRING_LIST:
                                     constraintLength = ReadWord();
                                     for (int y = 0; y < constraintLength; y++)
                                     {
                                         string constriant_string = ReadString();
-                                        networkDeviceOption.constraint_values.Add(constriant_string);
+
+                                        if(constriant_string.Trim().Length > 0)
+                                            networkDeviceOption.constraint_values.Add(constriant_string);
 
                                         if (!DEVICE_FEEDERENABLED) DEVICE_FEEDERENABLED = constriant_string.ToLower().Contains("adf");
                                         if (!DEVICE_DUPLEX) DEVICE_DUPLEX = constriant_string.ToLower().Contains("duplex");
@@ -260,10 +269,7 @@ namespace INSane
                                     break;
                                 case (int)SANE_CONSTRAINT_TYPE.SANE_CONSTRAINT_RANGE:
                                     for (int y = 0; y < 4; y++)
-                                    {
-                                        int constraint_value = ReadWord();
-                                        networkDeviceOption.constraint_values.Add(constraint_value.ToString());
-                                    }
+                                        networkDeviceOption.constraint_values.Add(ReadWord().ToString());
                                     break;
                             }
 
@@ -276,9 +282,23 @@ namespace INSane
                     status = SANE_STATUS.Invalid;
                     retry++;
 
-                    MessageBox.Show(null, "Der Scanner wird aktuell schon verwendet oder er ist nicht angeschlossen ! Host: " + hostname + ", Scanner: " + _scanner, "Versuch bis zur Selbstzerstörung " + retry + " von 10", MessageBoxButtons.OK);
+                    switch (connection_step)
+                    {
+                        case 0:
+                            MessageBox.Show(null, string.Format("Es konnte keine Verbindung zum Host {0} aufgebaut werden", hostname), "Verbindungsfehler", MessageBoxButtons.OK);
+                        break;
+                        case 1:
+                            MessageBox.Show(null, string.Format("Fehler beim initialisieren des Scannerservers"), "Verbindungsfehler", MessageBoxButtons.OK);
+                        break; 
+                        case 2:
+                            MessageBox.Show(null, string.Format("Der Scanner {0} konnte nicht gefunden werden", _scanner), "Verbindungsfehler", MessageBoxButtons.OK);
+                        break;
+                        case 3:
+                            MessageBox.Show(null, string.Format("Fehler beim Abrufen der Scannereigenschaften für {0]", _scanner), "Verbindungsfehler", MessageBoxButtons.OK);
+                            break;
+                    }
                 }
-            } while (status != SANE_STATUS.Success && retry < 10);            
+            } while (status != SANE_STATUS.Success && retry < max_retry);            
         }
 
         private static int CreateVersionCode(int major, int minor, int build)
@@ -457,14 +477,19 @@ namespace INSane
                 ImageDataWorker.RunWorkerAsync(ImageWorkerState);
             }
 
-            while (ImageDataWorker.IsBusy)
+            while (networkDevice.name != null && ImageDataWorker.IsBusy)
             {
                 System.Windows.Forms.Application.DoEvents();
                 System.Threading.Thread.Sleep(250);
             }
 
-            bmp = ImageWorkerState.bmp;
-            return ImageWorkerState.Status;
+            if (networkDevice.name != null)
+            {
+                bmp = ImageWorkerState.bmp;
+                return ImageWorkerState.Status;
+            }
+            else
+                return SANE_STATUS.DeviceBusy;
         }
 
         internal SANE_IMAGE_FRAME AcquireFrame()
