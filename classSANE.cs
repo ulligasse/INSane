@@ -218,7 +218,10 @@ namespace INSane
                     string resource = ReadString();
 
                     if (status != SANE_STATUS.Success)
+                    {
+                        networkDevice = new NetworkDevice();
                         throw new Exception();
+                    }
 
                     connection_step++;
 
@@ -291,7 +294,7 @@ namespace INSane
                             MessageBox.Show(null, string.Format("Fehler beim initialisieren des Scannerservers"), "Verbindungsfehler", MessageBoxButtons.OK);
                         break; 
                         case 2:
-                            MessageBox.Show(null, string.Format("Der Scanner {0} konnte nicht gefunden werden", _scanner), "Verbindungsfehler", MessageBoxButtons.OK);
+                            MessageBox.Show(null, string.Format("Der Scanner {0} konnte nicht gefunden werden. Bitte achten Sie darauf, dass der Scanner eingeschaltet und verbunden ist. Sollte dies der Fall sein, starten Sie den Scanner bitte neu und wiederholen Sie dann den Scanvorgang", _scanner), "Verbindungsfehler", MessageBoxButtons.OK);
                         break;
                         case 3:
                             MessageBox.Show(null, string.Format("Fehler beim Abrufen der Scannereigenschaften für {0]", _scanner), "Verbindungsfehler", MessageBoxButtons.OK);
@@ -311,10 +314,13 @@ namespace INSane
 
         internal void SendWord(int word)
         {
-            stream.WriteByte((byte)((word >> 24) & 0xff));
-            stream.WriteByte((byte)((word >> 16) & 0xff));
-            stream.WriteByte((byte)((word >> 8) & 0xff));
-            stream.WriteByte((byte)((word >> 0) & 0xff));
+            if (stream != null)
+            {
+                stream.WriteByte((byte)((word >> 24) & 0xff));
+                stream.WriteByte((byte)((word >> 16) & 0xff));
+                stream.WriteByte((byte)((word >> 8) & 0xff));
+                stream.WriteByte((byte)((word >> 0) & 0xff));
+            }
         }
 
         internal void SendString(string value, int size = 255)
@@ -329,12 +335,16 @@ namespace INSane
 
         internal int ReadWord()
         {
-            int value = 0;
-            value += (stream.ReadByte() << 24);
-            value += (stream.ReadByte() << 16);
-            value += (stream.ReadByte() << 8);
-            value += (stream.ReadByte() << 0);
-            return value;
+            if (stream != null)
+            {
+                int value = 0;
+                value += (stream.ReadByte() << 24);
+                value += (stream.ReadByte() << 16);
+                value += (stream.ReadByte() << 8);
+                value += (stream.ReadByte() << 0);
+                return value;
+            }
+            return 0;
         }
 
         internal string ReadString()
@@ -441,26 +451,35 @@ namespace INSane
 
         internal void Net_Close()
         {
-            SendWord((int)NetworkCommand.Close);
-            SendWord(networkDeviceHandle);
+            if (networkDevice.name != null)
+            {
+                SendWord((int)NetworkCommand.Close);
+                SendWord(networkDeviceHandle);
 
-            int dummy = ReadWord();
+                int dummy = ReadWord();
+            }
         }
 
         internal void Net_Cancle()
         {
-            SendWord((int)NetworkCommand.Cancel);
-            SendWord(networkDeviceHandle);
+            if (networkDevice.name != null)
+            {
+                SendWord((int)NetworkCommand.Cancel);
+                SendWord(networkDeviceHandle);
 
-            int dummy = ReadWord();
+                int dummy = ReadWord();
+            }
         }
 
         internal void Net_Exit()
         {
             SendWord((int)NetworkCommand.Exit);
 
-            socket.Close();
-            socket.Dispose();
+            if (socket != null)
+            {
+                socket.Close();
+                socket.Dispose();
+            }
         }
 
         public SANE_STATUS AcquireImage(ref Bitmap bmp)
@@ -489,7 +508,7 @@ namespace INSane
                 return ImageWorkerState.Status;
             }
             else
-                return SANE_STATUS.DeviceBusy;
+                return SANE_STATUS.IOError;
         }
 
         internal SANE_IMAGE_FRAME AcquireFrame()

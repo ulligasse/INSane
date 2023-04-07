@@ -431,7 +431,7 @@ namespace INSane
                     MessageBox.Show("Der Einzug des Scanners ist leer !");
                 else if(Status == SANE_STATUS.Jammed)
                     MessageBox.Show("Papierstau im Scanner !");
-                else if(Status == SANE_STATUS.DeviceBusy)
+                else if(Status == SANE_STATUS.IOError)
                     MessageBox.Show("Fehler bei Dateiübertragung !");
 
                 SANE.DEVICE_FEEDERENABLED = false;
@@ -669,11 +669,8 @@ namespace INSane
 
         private void SANE_Close()
         {
-            if (SANE.networkDevice.name != null) {
-                SANE.Net_Cancle();
-                SANE.Net_Close();
-            }
-
+            SANE.Net_Cancle();
+            SANE.Net_Close();
             SANE.Net_Exit();
             SANE = null;
         }
