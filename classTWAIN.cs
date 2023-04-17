@@ -217,8 +217,9 @@ namespace INSane
         ICAP_XRESOLUTION = 0x1118,
         ICAP_YRESOLUTION = 0x1119,
         ICAP_UNITS = 0x102,
+        ICAP_XFERMECH = 0x103,
         CAP_UICONTROLLABLE = 0x100E,
-        CAP_DUPLEXENABLED = 0x1013,
+        CAP_DUPLEXENABLED = 0x1013
     }
 
     public enum GlobalAllocFlags : int
@@ -361,7 +362,7 @@ namespace INSane
                         case DAT.DAT_PENDINGXFERS:
                             return (short)DG_CONTROL__DAT_PENDINGXFERS(_MSG, _pData);
                         case DAT.DAT_SETUPMEMXFER:
-                            return (short)DG_CONTROL__DAT_SETUPMEMXFER(_MSG, _pData, _dsOrigin);
+                            return (short)DG_CONTROL__DAT_SETUPMEMXFER(_MSG, _pData);
                         case DAT.DAT_EVENT:
                             return (short) TWRC.TWRC_SUCCESS;
                         default:
@@ -375,7 +376,7 @@ namespace INSane
                         case DAT.DAT_IMAGELAYOUT:
                             return (short)DG_IMAGE__DAT_IMAGELAYOUT(_MSG, _pData);
                         case DAT.DAT_IMAGENATIVEXFER:
-                            return (short)DG_IMAGE__DAT_IMAGENATIVEXFER(_MSG, _pData);
+                            return (short)DG_IMAGE__DAT_IMAGENATIVEXFER(_MSG, _pData, _dsOrigin);
                         default:
                             break;
                     }
@@ -387,8 +388,18 @@ namespace INSane
             return (short)(TWRC.TWRC_FAILURE);
         }
 
-        private TWRC DG_IMAGE__DAT_IMAGENATIVEXFER(MSG _MSG, IntPtr _pData)
+        private TWRC DG_IMAGE__DAT_IMAGENATIVEXFER(MSG _MSG, IntPtr _pData, string _dsOrigin)
         {
+            if (SANE == null)
+            {
+                SANE = new classSANE(SANE_Host, 6566, _dsOrigin);
+
+                FormScan.SetSANEConnection(SANE);
+                FormScan.SetHostInformation();
+                FormScan.SetFormControls();
+                FormScan.SetUserDefaults();
+            }
+
             TWAINState = TWSC.DS_Xfer_Active;
             Bitmap bmp = null;
 
@@ -537,18 +548,8 @@ namespace INSane
             Send_TWAIN_Message(TWAINIdentity, AppIdentity, DG.DG_CONTROL, DAT.DAT_NULL, MSG.MSG_XFERREADY, null);
         }
 
-        private TWRC DG_CONTROL__DAT_SETUPMEMXFER(MSG _MSG, IntPtr _pData, string _dsOrigin)
+        private TWRC DG_CONTROL__DAT_SETUPMEMXFER(MSG _MSG, IntPtr _pData)
         {
-            if (SANE == null)
-            {
-                SANE = new classSANE(SANE_Host, 6566, _dsOrigin);
-
-                FormScan.SetSANEConnection(SANE);
-                FormScan.SetHostInformation();
-                FormScan.SetFormControls();
-                FormScan.SetUserDefaults();
-            }
-
             TW_SETUPMEMXFER SetupMem;
             SetupMem.MinBufSize = 65536;
             SetupMem.MaxBufSize = 65536;
@@ -586,6 +587,16 @@ namespace INSane
                             tw_cap.ConType = TWON_ONEVALUE;
                             tw_cap.hContainer = pContainer_units;
                             Marshal.StructureToPtr(onevalue_units, pContainer_units, true);
+                            Marshal.StructureToPtr(tw_cap, _pData, true);
+                            return TWRC.TWRC_SUCCESS;
+                        case CAP.ICAP_XFERMECH:
+                            TW_ONEVALUE onevalue_xfermech;
+                            onevalue_xfermech.ItemType = (ushort)TWTY.TWTY_UINT16;
+                            onevalue_xfermech.Item = 0; // NATIVE XFERMECH
+                            IntPtr pContainer_xfermech = GlobalAlloc((int)GlobalAllocFlags.GHND, Marshal.SizeOf(onevalue_xfermech));
+                            tw_cap.ConType = TWON_ONEVALUE;
+                            tw_cap.hContainer = pContainer_xfermech;
+                            Marshal.StructureToPtr(onevalue_xfermech, pContainer_xfermech, true);
                             Marshal.StructureToPtr(tw_cap, _pData, true);
                             return TWRC.TWRC_SUCCESS;
                         case CAP.CAP_UICONTROLLABLE:
