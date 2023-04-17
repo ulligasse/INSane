@@ -86,6 +86,13 @@ namespace INSane
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 2, CharSet = CharSet.Ansi)]
+    public partial struct TW_EVENT
+    {
+        public IntPtr pEvent;
+        public MSG TWMessage;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 2, CharSet = CharSet.Ansi)]
     public partial struct TW_FIX32
     {
         public short Whole;
@@ -158,6 +165,8 @@ namespace INSane
         TWRC_SUCCESS = 0,
         TWRC_FAILURE = 1,
         TWRC_CANCEL = 3,
+        TWRC_DSEVENT = 4,
+        TWRC_NOTDSEVENT  = 5,
         TWRC_XFERDONE = 6
     }
 
@@ -235,6 +244,9 @@ namespace INSane
     {
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
         public static extern IntPtr GlobalAlloc(int flags, int size);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+        public static extern IntPtr IsDialogMessage(IntPtr hDlg, IntPtr lpMsg);
 
         public ushort TWON_ONEVALUE = 5;
         public short TWUN_INCHES = 0;
@@ -358,13 +370,30 @@ namespace INSane
                         case DAT.DAT_IDENTITY:
                             return (short)DG_CONTROL__DAT_IDENTITY(_pOrigin, _MSG, _pData, _dsOrigin);
                         case DAT.DAT_USERINTERFACE:
-                            return (short)DG_CONTROL__DAT_USERINTERFACE(_MSG, _pData);
+                            return (short)DG_CONTROL__DAT_USERINTERFACE(_MSG, _pData, _dsOrigin);
                         case DAT.DAT_PENDINGXFERS:
                             return (short)DG_CONTROL__DAT_PENDINGXFERS(_MSG, _pData);
                         case DAT.DAT_SETUPMEMXFER:
                             return (short)DG_CONTROL__DAT_SETUPMEMXFER(_MSG, _pData);
                         case DAT.DAT_EVENT:
-                            return (short) TWRC.TWRC_SUCCESS;
+                            TW_EVENT e = (TW_EVENT)Marshal.PtrToStructure(_pData, typeof(TW_EVENT));
+                            e.TWMessage = MSG.MSG_NULL;
+
+                            if (e.pEvent == IntPtr.Zero)
+                                return (short)TWRC.TWRC_FAILURE;
+                            else
+                            {
+                                IntPtr hWnd = Marshal.ReadIntPtr(e.pEvent);
+                                Marshal.StructureToPtr(e, _pData, true);
+
+                                if (hWnd == FormScan.Handle)
+                                {
+                                    IsDialogMessage(hWnd, e.pEvent);
+                                    return (short)TWRC.TWRC_DSEVENT;
+                                }
+                                else
+                                    return (short)TWRC.TWRC_NOTDSEVENT;
+                            }
                         default:
                             break;
                     }
@@ -494,7 +523,7 @@ namespace INSane
             return TWRC.TWRC_SUCCESS;
         }
 
-        private TWRC DG_CONTROL__DAT_USERINTERFACE(MSG _MSG, IntPtr _pData)
+        private TWRC DG_CONTROL__DAT_USERINTERFACE(MSG _MSG, IntPtr _pData, string _dsOrigin)
         {
             switch(_MSG)
             {
@@ -510,7 +539,19 @@ namespace INSane
 
                         TWAINState = TWSC.DS_Enabled;
                         if (Convert.ToBoolean(UserInterface.ShowUI))
+                        {
+                            if (SANE == null)
+                            {
+                                SANE = new classSANE(SANE_Host, 6566, _dsOrigin);
+
+                                FormScan.SetSANEConnection(SANE);
+                                FormScan.SetHostInformation();
+                                FormScan.SetFormControls();
+                                FormScan.SetUserDefaults();
+                            }
+
                             FormScan.Show();
+                        }
                         else
                         {
                             TWAINState = TWSC.DS_Xfer_Ready;
