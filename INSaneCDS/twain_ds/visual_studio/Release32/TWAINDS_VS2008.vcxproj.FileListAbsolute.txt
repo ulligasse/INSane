@@ -1,0 +1,1 @@
+C:\SH\INSane\INSaneCDS\twain_ds\visual_studio\Release32\TWAINDS_VS2008.vcxproj.AssemblyReference.cache
